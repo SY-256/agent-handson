@@ -36,7 +36,7 @@ tools_by_name = {tool.name: tool for tool in tools}
 
 # LLMの初期化
 cfg = Config(
-    read_time=300,
+    read_timeout=300,
 )
 llm_with_tools = init_chat_model(
     model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",

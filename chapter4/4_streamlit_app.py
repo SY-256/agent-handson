@@ -57,4 +57,71 @@ def run_agent(input_data):
 
         st.rerun()
 
+def feedback():
+    """フィードバックを取得し、エージェントに通知する関数"""
+    approve_column, deny_column = st.column(2)
+
+    feedback_result = None
+    with approve_column:
+        if st.button("APPROVE", width="stretch"):
+            st.session_state.waiting_for_approval = False
+            feedback_result = "APPROVE"
+    with deny_column:
+        if st.button("DENY", width="stretch"):
+            st.session_state.waiting_for_approval = False
+            feedback_result = "DENY"
+
+    # いずれかのボタンが押された場合
+    return feedback_result
+
+def app():
+    # タイトル設定
+    st.title("Webリサーチエージェント")
+
+    # メッセージ表示エリア
+    for msg in st.session_state.messages:
+        if msg["role"] == "user":
+            st.chat_message("user").write(msg["content"])
+        else:
+            st.chat_message("assistant").write(msg["content"])
+
+    # ツール承認の確認
+    if st.session_state.waiting_for_approval and st.session_state.tool_info:
+        st.info(st.session_state.tool_info["args"])
+        if st.session_state.tool_info["name"] == "write_file":
+            with st.container(height=400):
+                st.html(st.session_state.tool_info["html"], width="stretch")
+        feedback_result = feedback()
+        if feedback_result:
+            st.chat_message("user").write(feedback_result)
+            st.session_state.messages.append({"role": "user", "content": feedback_result})
+            run_agent(Command(resume=feedback_result))
+            st.rerun()
+
+    # 最終結果表示
+    if st.session_state.final_result and not st.session_state.waiting_for_approval:
+        st.subheader("最終結果")
+        st.success(st.session_state.final_result)
+
+    # ユーザー入力エリア
+    if not st.session_state.waiting_for_approval:
+        user_input = st.chat_input("メッセージを入力してください")
+        if user_input:
+            reset_session()
+            # スレッドIDを設定
+            st.session_state.thread_id = str(uuid.uuid4())
+            # ユーザーメッセージを追加
+            st.chat_message("user").write(user_input)
+            st.session_state.messages.append({"role": "user", "content": user_input})
+
+            # エージェント実行
+            messages = [HumanMessage(content=user_input)]
+            if run_agent(messages):
+                st.rerun()
+
+    else:
+        st.info("ツールの承認待ちです。上記ボタンで応答してください。")
+
+if __name__ == "__main__":
+    app()
 
